@@ -159,13 +159,15 @@ module.exports = async m => {
     (async () => {
       for (let i = 0; i < 60; i++) { await sleep(100); if (byLabel("A") && byLabel("A1") && byLabel("C") && !w.VerticalNestedTabs._state.restoring) break; }
       await sleep(300);
-      done(dump());
+      done({ d: dump(), selected: gB.selectedTab.label });
     })();
   `);
   {
+    const sel = d.selected; d = d.d;
     const a = d.find(x => x.l === "A"), a1 = d.find(x => x.l === "A1"), c = d.find(x => x.l === "C");
     check("reopen restores subtree links", a && a1 && c && a1.parent === "A" && c.parent === "A", d);
     check("reopened parent is still collapsed, children hidden", a && a.col && a1.hid && c.hid, d);
+    check("reopen selects the collapsed parent, not a hidden child", sel === "A", sel);
     check("reopened subtree contiguous", JSON.stringify(d.map(x => x.l)) === JSON.stringify(["A", "A1", "C", "D"]), d.map(x => x.l));
   }
 

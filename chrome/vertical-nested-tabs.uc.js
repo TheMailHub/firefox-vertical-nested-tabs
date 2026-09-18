@@ -353,6 +353,18 @@
     }
     sanitize();
     restoreSubtreeOrder();
+    // Reopening a closed collapsed subtree can leave Firefox's selection on a
+    // restored child. Keep the stored collapse and select the parent instead,
+    // as collapsing does, rather than letting render() expand it.
+    const selected = gBrowser.selectedTab;
+    if (state.active && selected && state.parentOf.has(selected)) {
+      const outer = Model.ancestorsOf(state.parentOf, selected)
+        .filter(a => state.collapsed.has(a))
+        .pop();
+      if (outer) {
+        gBrowser.selectedTab = outer;
+      }
+    }
     render();
   }
 
@@ -456,6 +468,13 @@
 
   function render() {
     state.renderTimer = null;
+    // The selected tab must never sit under a collapsed parent: a link opened
+    // from a collapsed parent lands as its (hidden) child and is selected
+    // before this deferred render runs, so TabSelect alone cannot catch it.
+    const selected = gBrowser.selectedTab;
+    if (state.active && selected && state.parentOf.has(selected)) {
+      expandAncestorsRaw(selected);
+    }
     const collapsedSet = new Set(state.collapsed);
     if (state.tempCollapsed) {
       collapsedSet.add(state.tempCollapsed);
@@ -562,7 +581,8 @@
     render();
   }
 
-  function expandAncestors(tab) {
+  /** Un-collapse every collapsed ancestor of `tab`; returns true if any was. */
+  function expandAncestorsRaw(tab) {
     let changed = false;
     for (const a of Model.ancestorsOf(state.parentOf, tab)) {
       if (state.collapsed.has(a)) {
@@ -571,7 +591,11 @@
         changed = true;
       }
     }
-    if (changed) {
+    return changed;
+  }
+
+  function expandAncestors(tab) {
+    if (expandAncestorsRaw(tab)) {
       render();
     }
   }
@@ -921,7 +945,15 @@
   }
 
   function onTabSelect(tab) {
-    if (state.active && tab.hasAttribute("nested-hidden")) {
+    if (!state.active) {
+      return;
+    }
+    // Check the model, not the rendered attribute: a tab opened and selected
+    // in the same tick has not been rendered yet.
+    const hidden =
+      tab.hasAttribute("nested-hidden") ||
+      Model.ancestorsOf(state.parentOf, tab).some(a => state.collapsed.has(a));
+    if (hidden) {
       expandAncestors(tab);
     }
   }
