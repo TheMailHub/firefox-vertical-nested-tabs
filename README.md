@@ -1,30 +1,9 @@
 # Firefox Vertical Nested Tabs
 
-Nested (tree) tabs for Firefox's **native vertical tabs**. Tabs can be children of other tabs, to any depth, and a parent can be collapsed or expanded with an arrow next to its close button. Nothing changes while tabs are horizontal.
+Nested (tree) tabs for Firefox's **native vertical tabs**. Tabs can be children of other tabs, to any depth, and a parent can be collapsed or expanded with an arrow next to its close button. Nothing changes while tabs are horizontal. For Tree Style Tab fans who want to use Firefox's native vertical implementation. 
 
-## What you get
+<img width="332" height="304" alt="GIF 9-18-2026 2-12-16 PM" src="https://github.com/user-attachments/assets/29de1d1b-42c0-4c07-9cc6-55f876bf268f" />
 
-| Action | Result |
-|---|---|
-| Drag a tab so it **visibly overlaps another tab** and hold still for a tenth of a second | The overlapped tab highlights and the dragged tab previews its indent. Drop to nest it as the last child. Keep moving, or let Firefox slide the other tab out of the way, and it is a normal reorder. |
-| Drop a tab between two tabs (no hold) | It takes the depth of its neighbours: dropping before a tab makes it that tab's sibling, dropping right after an expanded parent makes it the first child. While you drag, the tab that would become the parent shows a dashed outline and the dragged tab previews its indent. |
-| Drag a parent | Its subtree collapses for the drag and lands with it. |
-| Click the **arrow** at the right of a parent's label | Collapses (arrow points down) or expands (arrow points up) its children. A collapsed parent shows how many tabs are hidden under it. |
-| Right-click a tab → **New Nested Tab** | Opens a new tab as the last child of that tab. |
-| Right-click a link → **Open Link in Nested Tab** | Opens the link as the last child of the tab you are in. |
-| Close an expanded parent | Its children move up one level. |
-| Close a **collapsed** parent | The whole hidden subtree closes as one action. Right-click a tab → **Reopen Closed Tabs (N)** (or Ctrl+Shift+T) brings the subtree back, still nested and collapsed. |
-| Restart Firefox / restore a session | The tree and collapsed state come back. |
-| Turn vertical tabs off | Everything is inert and the strip looks completely native. Turn vertical tabs back on and the tree returns. |
-
-In vertical mode, holding a tab over another tab **nests** it instead, which overrides FireFox's default of creating a tab group. If you want to use tab groups, they're still available from the tab context menu, by dragging onto a group label, or by dragging into an existing group. Horizontal tabs are untouched.
-
-Rules that keep the tree sane:
-
-- Pinned tabs and split-view tabs are never part of the tree.
-- A subtree always lives inside one tab group. Nesting a tab under a grouped parent moves it into that group; moving a child out of its parent's group un-nests it.
-- Selecting a hidden tab (for example through Ctrl+Tab or a link that targets it) expands its ancestors.
-- Dragging a tab to another window, or out into a new window, takes its whole subtree along. It arrives with the same nesting and collapsed state; the tab itself becomes top-level in the new window.
 
 ## Requirements
 
