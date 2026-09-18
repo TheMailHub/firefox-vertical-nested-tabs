@@ -1,0 +1,11 @@
+{
+  "name": "firefox-vertical-nested-tabs",
+  "version": "0.1.0",
+  "description": "Nested (tree) tabs for Firefox's native vertical tabs, as a privileged userChrome script with a self-contained loader.",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/model.test.js",
+    "check": "node --check chrome/vertical-nested-tabs.uc.js && node --check chrome/vertical-nested-tabs-model.js && node --check loader/config.js"
+  },
+  "license": "MIT"
+}
