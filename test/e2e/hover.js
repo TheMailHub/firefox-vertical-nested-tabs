@@ -1,4 +1,5 @@
-// Arrow must stay put when the close button appears on hover; badge shows hidden count.
+// Parents show the arrow instead of a close button (even on hover/selected); leaf tabs keep
+// their close button; the arrow must stay put; badge shows hidden count.
 const path = require("node:path");
 module.exports = async m => {
   let failures = 0;
@@ -21,10 +22,12 @@ module.exports = async m => {
       gB.selectedTab = byLabel("Other");
       await sleep(300);
       const tw = byLabel("Parent").querySelector(".tab-nest-twisty").getBoundingClientRect();
-      done({ twistyX: tw.left, twistyW: tw.width });
+      const cb = byLabel("Parent").querySelector(".tab-close-button").getBoundingClientRect();
+      done({ twistyX: tw.left, twistyW: tw.width, closeW: cb.width });
     })();
   `);
   console.log("expanded, not hovered:", JSON.stringify(setup));
+  check("parent has no close button when idle", setup.closeW === 0, setup);
   await m.screenshot(path.join(require("node:os").tmpdir(), "vnt-shot-ux-expanded.png"));
 
   // hover the parent tab with a real pointer
@@ -45,8 +48,30 @@ module.exports = async m => {
   `);
   console.log("expanded, hovered:", JSON.stringify(hovered));
   await m.screenshot(path.join(require("node:os").tmpdir(), "vnt-shot-ux-hover.png"));
-  check("pointer is over the parent", hovered.hovered && hovered.closeVisible, hovered);
-  check("arrow does not move when the close button appears", Math.abs(hovered.twistyX - setup.twistyX) < 1, { before: setup.twistyX, after: hovered.twistyX });
+  check("pointer is over the parent", hovered.hovered, hovered);
+  check("parent has no close button while hovered", !hovered.closeVisible, hovered);
+  check("arrow does not move on hover", Math.abs(hovered.twistyX - setup.twistyX) < 1, { before: setup.twistyX, after: hovered.twistyX });
+
+  // a selected parent has no close button either; a hovered leaf keeps its own
+  const leaf = await m.send("WebDriver:FindElement", { using: "css selector", value: ".tabbrowser-tab[nested-level=\"1\"]:not([nested-haschildren])" });
+  const lkey = Object.keys(leaf.value)[0];
+  await m.send("WebDriver:PerformActions", { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" },
+    actions: [{ type: "pointerMove", origin: { [lkey]: leaf.value[lkey] }, x: 0, y: 0, duration: 100 }] }] });
+  const leafHover = await m.execAsync(`
+    const w = window; const gB = w.gBrowser; const done = arguments[arguments.length - 1];
+    const sleep = ms => new Promise(r => w.setTimeout(r, ms));
+    (async () => {
+      const p = gB.tabs.find(t => t.label === "Parent");
+      gB.selectedTab = p;
+      await sleep(300);
+      const vis = t => { const cs = w.getComputedStyle(t.querySelector(".tab-close-button")); return cs.visibility === "visible" && cs.display !== "none"; };
+      const c1 = gB.tabs.find(t => t.label === "Child 1");
+      done({ leafHovered: c1.matches(":hover"), leafClose: vis(c1), selectedParentClose: vis(p), parentSelected: p.selected });
+    })();
+  `);
+  console.log("leaf hovered, parent selected:", JSON.stringify(leafHover));
+  check("hovered leaf still has a close button", leafHover.leafHovered && leafHover.leafClose, leafHover);
+  check("selected parent has no close button", leafHover.parentSelected && !leafHover.selectedParentClose, leafHover);
 
   // move the pointer away, collapse, screenshot the badge
   await m.send("WebDriver:PerformActions", { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" },

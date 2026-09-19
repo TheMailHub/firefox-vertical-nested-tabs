@@ -83,6 +83,12 @@ module.exports = async m => {
     check("levels 0,1,1,2,0", d.map(x => x.lvl).join() === "0,1,1,2,0", d.map(x => x.lvl));
     check("C parent is B", d.find(x => x.l === "C").parent === "B", d);
   }
+  const expandedBadge = await m.exec(PRELUDE + `
+    const c = byLabel("A").querySelector(".tab-nest-count"), cb = byLabel("B").querySelector(".tab-nest-count");
+    return { aHidden: c.hidden, aValue: c.getAttribute("value"), aTip: c.getAttribute("tooltiptext"), bValue: cb.getAttribute("value"), bHidden: cb.hidden };
+  `);
+  check("expanded: A badge shows 3 descendants", expandedBadge.aHidden === false && expandedBadge.aValue === "3" && expandedBadge.aTip === "3 nested tabs", expandedBadge);
+  check("expanded: B badge shows 1 descendant", expandedBadge.bHidden === false && expandedBadge.bValue === "1", expandedBadge);
   // persisted values
   const persisted = await m.exec(PRELUDE + `
     const SS = w.SessionStore;
@@ -118,7 +124,7 @@ module.exports = async m => {
     })();
   `);
   check("collapse: badge shows 3 hidden descendants", badge.hidden === false && badge.value === "3", badge);
-  check("parent keeps close-button space when not hovered", badge.closeDisplay !== "none" && badge.closeVisibility === "hidden", badge);
+  check("parent has no close button (arrow takes its slot)", badge.closeDisplay === "none", badge);
   await m.screenshot(path.join(require("node:os").tmpdir(), "vnt-shot-collapsed.png"));
 
   // 5. selecting a hidden tab expands ancestors

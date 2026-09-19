@@ -1,6 +1,6 @@
 # Firefox Vertical Nested Tabs
 
-Nested (tree) tabs for Firefox's **native vertical tabs**. Tabs can be children of other tabs, to any depth, and a parent can be collapsed or expanded with an arrow next to its close button. Nothing changes while tabs are horizontal. For Tree Style Tab fans who want to use Firefox's native vertical implementation. 
+Nested (tree) tabs for Firefox's **native vertical tabs**. Tabs can be children of other tabs, to any depth, and a parent shows how many tabs sit under it and can be collapsed or expanded with an arrow that takes the place of its close button (close a parent with a middle-click, Ctrl+W or the context menu). Nothing changes while tabs are horizontal. For Tree Style Tab fans who want to use Firefox's native vertical implementation. 
 
 <img width="332" height="304" alt="GIF 9-18-2026 2-12-16 PM" src="https://github.com/user-attachments/assets/29de1d1b-42c0-4c07-9cc6-55f876bf268f" />
 

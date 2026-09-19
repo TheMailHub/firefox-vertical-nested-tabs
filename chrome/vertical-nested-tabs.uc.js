@@ -524,10 +524,13 @@
         );
         const count = tab.querySelector(".tab-nest-count");
         if (count) {
-          const n = s.collapsed ? Model.descendantsOf(order, state.parentOf, tab).length : 0;
+          const n = s.hasChildren ? Model.descendantsOf(order, state.parentOf, tab).length : 0;
           count.hidden = !n;
           count.setAttribute("value", n ? String(n) : "");
-          count.setAttribute("tooltiptext", n ? `${n} hidden nested tab${n === 1 ? "" : "s"}` : "");
+          count.setAttribute(
+            "tooltiptext",
+            n ? `${n}${s.collapsed ? " hidden" : ""} nested tab${n === 1 ? "" : "s"}` : ""
+          );
         }
       }
     }
@@ -1544,11 +1547,11 @@
     display: none;
   }
 
-  /* Firefox hides the close button until hover; keep its space on parent tabs
-     so the arrow does not jump when the button appears. */
-  &[expanded] .tabbrowser-tab[nested-haschildren]:not(:hover) .tab-close-button:not([selected]) {
-    display: revert;
-    visibility: hidden;
+  /* A parent tab shows the arrow in place of its close button, so the arrow
+     never shifts when Firefox reveals the close button on hover. The tab can
+     still be closed with a middle-click, Ctrl+W or the context menu. */
+  &[expanded] .tabbrowser-tab[nested-haschildren] .tab-close-button {
+    display: none;
   }
 
   /* Hold-to-nest target highlight. */
@@ -1571,7 +1574,7 @@
   display: none;
 }
 
-/* Number of hidden descendants, shown on a collapsed parent. */
+/* Number of descendants, shown on every parent (expanded or collapsed). */
 .tab-nest-count {
   margin: 0;
   margin-inline-end: 2px;
