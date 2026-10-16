@@ -304,14 +304,14 @@ module.exports = async m => {
     menu.addEventListener("popupshown", () => {
       const item = w.document.getElementById("context_newNestedTab");
       const ref = w.document.getElementById("context_openANewTab");
-      const r = { present: !!item, hidden: item ? item.hidden : null, afterRef: item && ref && ref.nextElementSibling === item, label: item && item.getAttribute("label") };
+      const r = { present: !!item, hidden: item ? item.hidden : null, beforeRef: item && ref && ref.previousElementSibling === item, label: item && item.getAttribute("label") };
       menu.hidePopup();
       done(r);
     }, { once: true });
     menu.openPopup(tab, "after_start", 0, 0, true, false, null);
     w.TabContextMenu.contextTab = tab;
   `);
-  check("tab context menu shows 'New Nested Tab' after 'New Tab Below'", d.present && d.hidden === false && d.afterRef, d);
+  check("tab context menu shows 'New Nested Tab' above 'New Tab Below'", d.present && d.hidden === false && d.beforeRef, d);
 
   // 14. vertical off -> inert; on -> tree restored
   d = await m.execAsync(PRELUDE + `

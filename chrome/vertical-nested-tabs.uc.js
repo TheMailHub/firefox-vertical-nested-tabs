@@ -15,7 +15,8 @@
  *   gBrowser.tabContainer.verticalMode / [orient] / [expanded]
  *   window.TabDragAndDrop (handle_dragstart/dragover/drop/dragend,
  *     _triggerDragOverGrouping, _getDragTarget, _resetGroupTarget)
- *   gBrowser.removeTab / removeTabs / moveTabsAfter / addTrustedTab
+ *   gBrowser.addTab / removeTab / removeTabs / moveTabsAfter / addTrustedTab
+ *   gBrowser.tabContainer._invalidateCachedTabs / _invalidateCachedVisibleTabs
  *   SessionStore custom tab values, TabContextMenu, gContextMenu
  */
 (function () {
@@ -139,6 +140,7 @@
     closingSubtree: null, // Set of tabs being closed as one subtree
     adoptingOut: null, // Set of descendants following a parent to another window
     pendingParent: null, // parent for the very next TabOpen we cause
+    placing: false, // Firefox is choosing where a new tab goes (see addTabWrapper)
     rebuildTimer: null,
     renderTimer: null,
     drag: null, // { draggedTab, lastX, lastY, candidate, timer, nestTarget }
@@ -728,6 +730,44 @@
   // Tab lifecycle
   // ---------------------------------------------------------------------------
 
+  // Firefox puts a related tab after its opener (or after the last tab that
+  // opener opened) counting only visible tabs. A collapsed opener would push
+  // the new tab past its hidden descendants, and a hidden previous related tab
+  // sends it to the end of the strip, into whatever tree is last. While
+  // Firefox picks the spot, nested-hidden tabs count as visible, so the tab
+  // lands where it would if the subtree were expanded; onTabOpen expands it.
+  const origAddTab = gBrowser.addTab;
+  function addTabWrapper(...args) {
+    const options = args[1];
+    const autoPlaced =
+      state.active &&
+      state.collapsed.size > 0 &&
+      options?.insertTab !== false &&
+      typeof options?.tabIndex != "number" &&
+      typeof options?.elementIndex != "number";
+    if (!autoPlaced) {
+      return origAddTab.apply(this, args);
+    }
+    state.placing = true;
+    tabContainer._invalidateCachedVisibleTabs?.();
+    try {
+      return origAddTab.apply(this, args);
+    } finally {
+      if (state.placing) {
+        state.placing = false;
+        tabContainer._invalidateCachedVisibleTabs?.();
+      }
+    }
+  }
+
+  // Firefox invalidates its tab caches right after choosing the new tab's
+  // index and before inserting it; nothing after that may see hidden tabs.
+  const origInvalidateCachedTabs = tabContainer._invalidateCachedTabs;
+  function invalidateCachedTabsWrapper(...args) {
+    state.placing = false;
+    return origInvalidateCachedTabs.apply(this, args);
+  }
+
   function onTabOpen(tab, detail) {
     if (state.restoring) {
       scheduleRebuild();
@@ -751,6 +791,7 @@
     }
     ensureId(tab);
     let parent = null;
+    let inferred = false;
     if (state.pendingParent && eligible(state.pendingParent)) {
       parent = state.pendingParent;
       state.pendingParent = null;
@@ -767,9 +808,16 @@
           order.indexOf(tab),
           !!tab.openerTab
         );
+        inferred = true;
       }
     }
     setParentRaw(tab, parent);
+    if (inferred) {
+      // A new tab never opens hidden, even in the background: like Firefox
+      // does for a collapsed tab group, adding a tab to a collapsed subtree
+      // expands it. (Reopened tabs keep their stored state via rebuild().)
+      expandAncestorsRaw(tab);
+    }
     scheduleRender();
   }
 
@@ -1473,7 +1521,7 @@
       eligible(ctxTab) &&
       !window.TabContextMenu?.multiselected;
     if (show) {
-      ref.after(newNestedItem); // re-place every time: Firefox re-arranges this menu
+      ref.before(newNestedItem); // re-place every time: Firefox re-arranges this menu
     }
     newNestedItem.hidden = !show;
   }
@@ -1493,7 +1541,7 @@
       !!owner &&
       eligible(owner);
     if (show) {
-      ref.after(linkNestedItem);
+      ref.before(linkNestedItem);
     }
     linkNestedItem.hidden = !show;
   }
@@ -1654,7 +1702,7 @@
     const desc = TabProto && Object.getOwnPropertyDescriptor(TabProto, "visible");
     if (desc?.get && !desc.get.__vntPatched) {
       const getter = function () {
-        return desc.get.call(this) && !this.hasAttribute("nested-hidden");
+        return desc.get.call(this) && (state.placing || !this.hasAttribute("nested-hidden"));
       };
       getter.__vntPatched = true;
       Object.defineProperty(TabProto, "visible", { ...desc, get: getter });
@@ -1663,6 +1711,8 @@
       throw new Error("tabbrowser-tab has no `visible` getter");
     }
 
+    patch(gBrowser, "addTab", addTabWrapper);
+    patch(tabContainer, "_invalidateCachedTabs", invalidateCachedTabsWrapper);
     patch(gBrowser, "removeTab", removeTabWrapper);
     patch(dnd, "handle_dragstart", dragStartWrapper);
     patch(dnd, "handle_dragover", dragOverWrapper);

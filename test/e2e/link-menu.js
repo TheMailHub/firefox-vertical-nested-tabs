@@ -47,7 +47,7 @@ module.exports = async m => {
       for (let i = 0; i < 50; i++) { await sleep(100); if (menu.state === "open") break; }
       const item = w.document.getElementById("context-openlinkinnestedtab");
       const native = w.document.getElementById("context-openlinkintab");
-      const before = { state: menu.state, present: !!item, hidden: item && item.hidden, afterNative: !!item && native.nextElementSibling === item,
+      const before = { state: menu.state, present: !!item, hidden: item && item.hidden, beforeNative: !!item && native.previousElementSibling === item,
         onLink: !!(w.gContextMenu && (w.gContextMenu.onSaveableLink || w.gContextMenu.onPlainTextLink)), linkURL: w.gContextMenu && w.gContextMenu.linkURL };
       const parent = gB.selectedTab;
       const existing = new Set(gB.tabs);
@@ -62,7 +62,7 @@ module.exports = async m => {
   `);
   console.log(JSON.stringify(r));
   check("content context menu opened on a link", r.before && r.before.state === "open" && r.before.onLink, r.before);
-  check("'Open Link in Nested Tab' shown after native item", r.before && r.before.present && r.before.hidden === false && r.before.afterNative, r.before);
+  check("'Open Link in Nested Tab' shown above native item", r.before && r.before.present && r.before.hidden === false && r.before.beforeNative, r.before);
   check("link opened as nested child of current tab", r.child && r.child.parent === "LP" && r.child.lvl === "1" && r.child.index === r.child.parentIndex + 1, r);
   console.log(failures ? `${failures} FAILURE(S)` : "ALL PASSED");
   if (failures) process.exitCode = 1;
