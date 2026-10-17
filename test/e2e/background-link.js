@@ -1,7 +1,9 @@
-// Ctrl+click (background tab) on a link in a *collapsed* tab: the new tab must land where it
-// would if the subtree were expanded (right after the opener / after the previous related tab),
-// and the subtree must expand so the new tab is visible. The tab is not selected, so this is
-// not covered by the "selected tab is never hidden" rule.
+// Ctrl+click (background tab) on a link in a tab with children: like "Open Link in Nested Tab",
+// the new tab becomes the opener's last child, and later links follow it in click order. In a
+// *collapsed* tab Firefox's own placement (which skips hidden tabs) must not bury the tab deep
+// in the subtree or append it to the last tree on the strip, and the subtree must expand so the
+// new tab is visible. The tab is not selected, so the "selected tab is never hidden" rule does
+// not cover this.
 module.exports = async m => {
   let failures = 0;
   const check = (n, ok, d) => { console.log((ok ? "PASS " : "FAIL ") + n + (ok ? "" : " " + JSON.stringify(d))); if (!ok) failures++; };
@@ -88,9 +90,10 @@ module.exports = async m => {
   // 1. Two Ctrl+clicks in the collapsed parent BP.
   const r1 = await ctrlClick("BP", "N1");
   const r2 = await ctrlClick("BP", "N2");
+  const t1 = l => r1.tabs.find(t => t.l === l);
   const t2 = l => r2.tabs.find(t => t.l === l);
   console.log(JSON.stringify(r2.tabs));
-  check("1st link from collapsed BP becomes its first child", r1.tab && r1.tab.parent === "BP" && r1.tab.index === t2("BP").index + 1, r1.tab);
+  check("1st link from collapsed BP becomes its last child", r1.tab && r1.tab.parent === "BP" && r1.tab.lvl === "1" && r1.tab.index === t1("BH2").index + 1, r1.tab);
   check("2nd link goes right after the 1st, also a child of BP", r2.tab && r2.tab.parent === "BP" && r2.tab.index === t2("N1").index + 1, r2.tab);
   check("BP expanded; both new tabs visible", !t2("BP").collapsed && [t2("N1"), t2("N2")].every(t => !t.hidden && t.visible), [t2("BP"), t2("N1"), t2("N2")]);
   check("selection stays on BP (background tabs)", r1.selected === "BP" && r2.selected === "BP", [r1.selected, r2.selected]);
@@ -107,7 +110,7 @@ module.exports = async m => {
   `);
   const r3 = await ctrlClick("BC1", "N3");
   const t3 = l => r3.tabs.find(t => t.l === l);
-  check("link from collapsed BC1 becomes its first child", r3.tab && r3.tab.parent === "BC1" && r3.tab.index === t3("BC1").index + 1 && r3.tab.lvl === "2", r3.tab);
+  check("link from collapsed BC1 becomes its last child", r3.tab && r3.tab.parent === "BC1" && r3.tab.index === t3("BG1").index + 1 && r3.tab.lvl === "2", r3.tab);
   check("BC1 expanded; new tab and BG1 visible", !t3("BC1").collapsed && !t3("N3").hidden && t3("N3").visible && !t3("BG1").hidden, [t3("BC1"), t3("N3"), t3("BG1")]);
 
   // 3. Collapse BC1 again without changing selection: the previous related tab (N3) is now
@@ -120,11 +123,25 @@ module.exports = async m => {
   const t4 = l => r4.tabs.find(t => t.l === l);
   console.log(JSON.stringify(r4.tabs));
   check("next link goes right after the hidden previous one, under BC1", r4.tab && r4.tab.parent === "BC1" && r4.tab.index === t4("N3").index + 1, r4.tab);
+  check("...which is still the bottom of BC1's children", r4.tabs.find(t => t.index === r4.tab.index + 1).l === "BC2", r4.tabs);
   check("BC1 expanded again; new tab visible", !t4("BC1").collapsed && !t4("N4").hidden && t4("N4").visible, [t4("BC1"), t4("N4")]);
   check("nothing was appended to the end of the strip (2)", r4.last === "BQ1", r4.last);
   check("BQ still collapsed", t4("BQ").collapsed && t4("BQ1").hidden, [t4("BQ"), t4("BQ1")]);
 
-  check("no script errors", r4.errors && r4.errors.length === 0 && r1.errors.length === 0, [r1.errors, r4.errors]);
+  // 4. Ctrl+click twice in an *expanded* child whose child has its own child.
+  await m.execAsync(PRELUDE + `
+    gB.selectedTab = byLabel("BC2");
+    (async () => { await sleep(300); done(true); })();
+  `);
+  const r5 = await ctrlClick("BC2", "N5");
+  const r6 = await ctrlClick("BC2", "N6");
+  const t6 = l => r6.tabs.find(t => t.l === l);
+  console.log(JSON.stringify(r6.tabs));
+  check("link from expanded BC2 goes below its nested subtree as a direct child", r5.tab && r5.tab.parent === "BC2" && r5.tab.lvl === "2" && r5.tab.index === t6("BH2").index + 1, r5.tab);
+  check("2nd link from BC2 follows the 1st", r6.tab && r6.tab.parent === "BC2" && r6.tab.index === t6("N5").index + 1 && t6("N1").index === r6.tab.index + 1, r6.tabs);
+  check("BC2's nested subtree untouched; selection stays on BC2", t6("BG2").parent === "BC2" && t6("BH2").parent === "BG2" && r6.selected === "BC2", [t6("BG2"), t6("BH2"), r6.selected]);
+
+  check("no script errors", r6.errors && r6.errors.length === 0 && r4.errors.length === 0 && r1.errors.length === 0, [r1.errors, r4.errors, r6.errors]);
   console.log(failures ? `${failures} FAILURE(S)` : "ALL PASSED");
   if (failures) process.exitCode = 1;
 };

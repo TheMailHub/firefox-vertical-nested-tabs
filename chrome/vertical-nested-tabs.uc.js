@@ -817,6 +817,13 @@
       // does for a collapsed tab group, adding a tab to a collapsed subtree
       // expands it. (Reopened tabs keep their stored state via rebuild().)
       expandAncestorsRaw(tab);
+      if (parent && parent === tab.openerTab) {
+        // A link opened from a parent lands between it and its first child;
+        // like "Open Link in Nested Tab", it goes after the last one instead.
+        // Firefox puts the next link from that parent after this tab.
+        nestUnder([tab], parent);
+        return;
+      }
     }
     scheduleRender();
   }
